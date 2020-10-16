@@ -5,6 +5,7 @@ from sqlite3 import Error
 import csv
 from collections import OrderedDict
 import re
+import os
 
 db = SqliteDatabase("inventory.db")
 
@@ -18,6 +19,24 @@ class Product(Model):
     class Meta:
         database = db
 
+def clear():
+    """Clear the terminal"""
+    os.system('clear')
+
+
+#Researched, https://www.sqlitetutorial.net/sqlite-python/creating-database/ 
+def create_connection(db_file):
+    """ Create a database connection to a SQLite database. Creates new one if it doesn't exist """
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+    except Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.close()
+
+
 
 def process_csv(file):
     """Processed csv data into dictionary"""
@@ -25,6 +44,7 @@ def process_csv(file):
         inventorylist = csv.DictReader(csvfile)
         rows = list(inventorylist)
     return rows
+
 
 def csv_to_db(csv_list):
     """Cleans and pushes data from csv to the db. """
@@ -71,22 +91,11 @@ def csv_to_db(csv_list):
         else:
             print("\nPlease enter either 'y' or 'n'.")
 
-#Researched, https://www.sqlitetutorial.net/sqlite-python/creating-database/ 
-def create_connection(db_file):
-    """ Create a database connection to a SQLite database. Creates new one if it doesn't exist """
-    conn = None
-    try:
-        conn = sqlite3.connect(db_file)
-    except Error as e:
-        print(e)
-    finally:
-        if conn:
-            conn.close()
 
-
-def restart():
+def restart(question):
+    """Gets input from user and returns True if loop must restart"""
     while True:
-        add_more = input("\nDo you want to add another product? [yn]")
+        add_more = input(question)
         if add_more.lower() == "y":
             add_more = True
             break
@@ -94,7 +103,7 @@ def restart():
             add_more = False
             break
         else:
-            print("Please enter either a 'y' or 'n' ")
+            print("\nPlease enter either a 'y' or 'n' ")
     if add_more:
         return True
     else:
@@ -102,6 +111,7 @@ def restart():
 
 def add_item():
     """Add an item to the inventory"""
+    clear()
     print("\nYou are adding a product to the inventory.")
     
     while True:
@@ -119,6 +129,7 @@ def add_item():
             if is_num:
                 break
             else:
+                clear()
                 print("\nERROR: Please enter a valid number")
                 continue
 
@@ -128,6 +139,7 @@ def add_item():
             if matched:
                 break
             else:
+                clear()
                 print("\n ERROR: Please use the correct format for your price\n")
                 continue
         while True:
@@ -136,26 +148,29 @@ def add_item():
             try:
                 datetime.datetime.strptime(date, '%m/%d/%Y')
             except ValueError:
+                clear()
                 print("\nERROR: Your date format seems to be in the incorrect format, please try again\n")
                 date_correct = False
             if date_correct:
                 break
             else:
                 continue
-
+        clear()
         print("Please check the data provided: \nProduct Name: {} \nProduct Quantity: {} \nProduct Price: {} \nDate Updated: {}"
                .format(name, quantity, price, date))
         
         while True:
-            checked = input("Are you happy to proceed? [yn]  ")
+            checked = input("\nAre you happy to proceed? [yn]  ")
             if checked.lower() == "y" :
                 try:
                     Product.create(product_name = name, 
                                 product_quantity = int(quantity), 
                                 product_price = int(float(price[1:]) * 100), 
                                 date_updated = datetime.datetime.strptime(date, '%m/%d/%Y'))
+                    clear()
                     print("Product was created")
                 except IntegrityError:
+                    clear()
                     print("\n{}.  --  Product name already exists.  ".format(name))
                     name_length = len(name)
                     doubled_item = Product.get(product_name = name)
@@ -176,7 +191,7 @@ def add_item():
             else: 
                 print("\nPlease enter either a 'y' or 'n'")
         
-        add_more = restart()
+        add_more = restart("\nDo you want to add another product? [yn]   ")
         if add_more:
             continue
         else:
@@ -184,38 +199,35 @@ def add_item():
 
 def display_product():
     """Display a product by id"""
-    do_continue = None
     product = None
+    clear()
     while True:
         input_id = input("\nPlease enter the id of the product you want to be displayed:   ")
-        try:  
-            product = Product.get(product_id = input_id )
-        except Product.DoesNotExist:
-            print("\nProduct not found, please try entering the id again.")
-            continue
-        if product:
-            print("\nProduct ID: {} \nProduct Name: {} \nProduct Quantity: {} \nProduct Price: ${} \nLast Updated: {}"
-                .format(product.product_id, product.product_name, product.product_quantity, product.product_price / 100, datetime.datetime.strftime(product.date_updated, '%m/%d/%Y')))
-            while True:
-                again = input("\nDo you want to display another product? [y/n]  ")
-                if again.lower() == "y":
-                    do_continue = True
-                    break
-                elif again.lower() == "n":
-                    do_continue = False
-                    break
-                else:
-                    print("\nPlease type either a 'y' or a 'n'")
-            if do_continue:
+        if input_id.isnumeric():
+            try:  
+                product = Product.get(product_id = input_id )
+            except Product.DoesNotExist:
+                print("\nProduct not found, please try entering the id again.")
                 continue
-            else:
-                break
+            if product:
+                print("\nProduct ID: {} \nProduct Name: {} \nProduct Quantity: {} \nProduct Price: ${} \nLast Updated: {}"
+                    .format(product.product_id, product.product_name, product.product_quantity, product.product_price / 100, datetime.datetime.strftime(product.date_updated, '%m/%d/%Y')))
             
+                again = restart("\nDo you want to display another product? [y/n]  ")
+                if again:
+                    continue
+                else:
+                    break
+        else:
+            print("\nPlease enter a valid numeral product id." )
+            continue
 
 
 
 def create_backup():
     """Create a csv backup of the inventory"""
+    clear()
+    print("Creating backup...")
     with open('inventory_backup.csv', 'a') as csvfile:
         fieldnames = ['product_id', 'product_name', 'product_price',
                       'product_quantity', 'date_updated']
@@ -253,6 +265,8 @@ def menu_loop():
         if choice in menu:
             menu[choice]()
         elif choice.lower() == "q":
+            clear()
+            print("Thank you for using the inventory. Goodbye")
             break
         else:
             print("Please choose a valid option from the list")
