@@ -120,7 +120,8 @@ def add_item():
         price = None
         checked = None
         date = None
-        add_more = None
+        cancel = False
+        again = None
         name = input("\nEnter product name:  ")
 
         while True:
@@ -143,18 +144,23 @@ def add_item():
                 print("\n ERROR: Please use the correct format for your price\n")
                 continue
         while True:
-            date_correct = True
             date = input("Enter the date this was recorded in the format mm/dd/yyyy:  ")
+            
             try:
-                datetime.datetime.strptime(date, '%m/%d/%Y')
+                date_conv = datetime.datetime.strptime(date, '%m/%d/%Y')
             except ValueError:
                 clear()
                 print("\nERROR: Your date format seems to be in the incorrect format, please try again\n")
-                date_correct = False
-            if date_correct:
-                break
-            else:
                 continue
+            
+            if date_conv > datetime.datetime.now():
+                clear()
+                print("\nERROR: Date cannot be in the future, please try again.\n")
+                continue
+
+
+            break
+
         clear()
         print("Please check the data provided: \nProduct Name: {} \nProduct Quantity: {} \nProduct Price: {} \nDate Updated: {}"
                .format(name, quantity, price, date))
@@ -187,9 +193,17 @@ def add_item():
                         print(" "*(name_length+3) + "--  Product record duplicate. Record disguarded.")
                 break
             elif checked.lower() == "n":
-                continue
+                cancel = True
+                again = restart("\nWould you like to re-add the product? [yn]  ")
+                break
             else: 
                 print("\nPlease enter either a 'y' or 'n'")
+
+        if cancel:
+            if again:
+                continue
+            else:
+                break
         
         add_more = restart("\nDo you want to add another product? [yn]   ")
         if add_more:
